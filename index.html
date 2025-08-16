@@ -1,0 +1,1097 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Two-in-One Image Combiner</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #6b7280;
+      --primary: #2563eb;
+      --border: #d1d5db;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      background: var(--bg);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+    }
+
+    .container {
+      width: min(1000px, 94vw);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 20px 24px;
+      box-shadow: 0 10px 30px rgba(2, 6, 23, 0.06);
+    }
+
+    h1 {
+      font-size: clamp(1.15rem, 1rem + 1vw, 1.5rem);
+      margin: 0 0 14px;
+      text-align: center;
+    }
+
+    p.lead {
+      margin: 0 0 18px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 0.95rem;
+    }
+
+    .inputs {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin: 12px 0 6px;
+    }
+
+    @media (min-width: 560px) {
+      .inputs { grid-template-columns: 1fr 1fr; }
+    }
+
+    .previews {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin: 8px 0 10px;
+    }
+    @media (min-width: 560px) {
+      .previews { grid-template-columns: 1fr 1fr; }
+    }
+    .preview-label {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin: 0 0 6px;
+    }
+    .preview-box {
+      border: 2px dashed #cbd5e1;
+      border-radius: 10px;
+      background:
+        linear-gradient(45deg, #fafafa 25%, transparent 25%),
+        linear-gradient(-45deg, #fafafa 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #fafafa 75%),
+        linear-gradient(-45deg, transparent 75%, #fafafa 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+      aspect-ratio: 4 / 3;
+      min-height: 160px;
+      display: grid;
+      place-items: center;
+      padding: 6px;
+    }
+    .preview-box canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border-radius: 6px;
+      background: transparent;
+      border: none;
+      touch-action: none; /* prevent page scroll while cropping on mobile */
+    }
+
+    .rotate-controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .rotate-controls .rot-label {
+      color: var(--muted);
+      font-size: 0.85rem;
+      min-width: 2.5em;
+      text-align: center;
+    }
+    .rotate-controls button {
+      padding: 6px 10px;
+      font-size: 0.9rem;
+      border-radius: 8px;
+    }
+
+    /* Mobile tweaks */
+    @media (max-width: 480px) {
+      .container { padding: 14px; }
+      .actions { flex-direction: column; }
+      .actions button { width: 100%; }
+      .preview-box { aspect-ratio: 1 / 1; min-height: 140px; }
+    }
+
+    label {
+      font-size: 0.9rem;
+      color: var(--text);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .file-field {
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      background: #fafafa;
+    }
+
+    input[type="file"] {
+      width: 100%;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 14px 0 8px;
+    }
+
+    button {
+      appearance: none;
+      border: 1px solid var(--primary);
+      background: var(--primary);
+      color: white;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: transform 0.05s ease, opacity 0.2s ease, background 0.2s ease;
+    }
+    button.secondary {
+      background: transparent;
+      color: var(--primary);
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    button:active { transform: translateY(1px); }
+
+    .status {
+      text-align: center;
+      color: var(--muted);
+      min-height: 1.2em;
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+    }
+
+    .canvas-wrap {
+      margin-top: 8px;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      padding: 10px;
+    }
+
+    canvas {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 8px;
+      /* Visible border requirement */
+      border: 2px dashed #cbd5e1;
+      background:
+        linear-gradient(45deg, #fafafa 25%, transparent 25%),
+        linear-gradient(-45deg, #fafafa 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #fafafa 75%),
+        linear-gradient(-45deg, transparent 75%, #fafafa 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px; /* subtle checkboard */
+    }
+
+    .hint {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-top: 8px;
+    }
+  </style>
+  <script>
+    // OpenCV.js readiness flag
+    window.cvReady = false;
+    // Preconfigure Module so OpenCV can signal readiness reliably
+    window.Module = window.Module || {};
+    window.Module.onRuntimeInitialized = function() { window.cvReady = true; };
+    function onOpenCvReady() {
+      try {
+        if (window.cv) {
+          if (typeof cv.getBuildInformation === 'function') {
+            window.cvReady = true;
+          } else if (cv && typeof cv.onRuntimeInitialized === 'function') {
+            cv.onRuntimeInitialized = () => { window.cvReady = true; };
+          } else if (cv && cv['onRuntimeInitialized'] !== undefined) {
+            cv['onRuntimeInitialized'] = () => { window.cvReady = true; };
+          } else {
+            // Fallback: assume ready after load
+            window.cvReady = true;
+          }
+        }
+      } catch (_) { window.cvReady = false; }
+    }
+  </script>
+  <script async src="https://docs.opencv.org/4.x/opencv.js" onload="onOpenCvReady()" crossorigin="anonymous"></script>
+</head>
+<body>
+  <main class="container" role="main">
+    <h1>Combine Two Images Vertically</h1>
+    <p class="lead">Upload two images, then combine them into one stacked image. The images will be resized to the same width to preserve aspect ratios.</p>
+
+    <section class="inputs" aria-label="Image upload inputs">
+      <div class="file-field">
+        <label for="file1">Image 1</label>
+        <input id="file1" type="file" accept="image/*" />
+        <div class="rotate-controls">
+          <button type="button" id="scan1" class="secondary">Scan with camera</button>
+        </div>
+      </div>
+      <div class="file-field">
+        <label for="file2">Image 2</label>
+        <input id="file2" type="file" accept="image/*" />
+        <div class="rotate-controls">
+          <button type="button" id="scan2" class="secondary">Scan with camera</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="previews" aria-label="Selected image previews">
+      <div class="preview">
+        <div class="preview-label">Preview 1</div>
+        <div class="preview-box">
+          <canvas id="preview1" aria-label="Preview canvas 1"></canvas>
+        </div>
+        <div class="rotate-controls">
+          <button type="button" id="rotL1" class="secondary">⟲ 90°</button>
+          <span class="rot-label" id="rotLabel1">0°</span>
+          <button type="button" id="rotR1" class="secondary">⟳ 90°</button>
+        </div>
+        <div class="rotate-controls">
+          <button type="button" id="clearCrop1" class="secondary">Clear crop</button>
+        </div>
+      </div>
+      <div class="preview">
+        <div class="preview-label">Preview 2</div>
+        <div class="preview-box">
+          <canvas id="preview2" aria-label="Preview canvas 2"></canvas>
+        </div>
+        <div class="rotate-controls">
+          <button type="button" id="rotL2" class="secondary">⟲ 90°</button>
+          <span class="rot-label" id="rotLabel2">0°</span>
+          <button type="button" id="rotR2" class="secondary">⟳ 90°</button>
+        </div>
+        <div class="rotate-controls">
+          <button type="button" id="clearCrop2" class="secondary">Clear crop</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="actions">
+      <button id="combineBtn">Combine</button>
+      <button id="downloadBtn" class="secondary" disabled>Download JPEG</button>
+    </div>
+
+    <div class="actions" aria-label="Output options">
+      <label style="display:flex; align-items:center; gap:8px;">
+        <input type="checkbox" id="fitA4" checked />
+        <span>Fit to A4 (portrait)</span>
+      </label>
+      <label style="display:flex; align-items:center; gap:8px;">
+        <span>DPI</span>
+        <select id="dpiSelect">
+          <option value="150">150</option>
+          <option value="300" selected>300</option>
+        </select>
+      </label>
+      <span style="color:var(--muted); font-size:0.85rem;">Margin: 10mm</span>
+    </div>
+
+    <div class="actions" id="a4PositionControls" style="display:flex; gap:14px; align-items:center; justify-content:center; flex-wrap:wrap;">
+      <label style="display:flex; align-items:center; gap:8px;">
+        <span>Horizontal position</span>
+        <input type="range" id="a4PosX" min="-100" max="100" step="1" value="0" />
+        <span id="a4PosXVal" style="width:3ch; text-align:right; color:var(--muted);">0</span>
+      </label>
+      <label style="display:flex; align-items:center; gap:8px;">
+        <span>Vertical position</span>
+        <input type="range" id="a4PosY" min="-100" max="100" step="1" value="0" />
+        <span id="a4PosYVal" style="width:3ch; text-align:right; color:var(--muted);">0</span>
+      </label>
+      <span style="color:var(--muted); font-size:0.85rem;">-100 = top/left, 0 = center, 100 = bottom/right</span>
+    </div>
+
+    <div id="status" class="status" aria-live="polite"></div>
+
+    <div class="canvas-wrap">
+      <canvas id="resultCanvas" width="10" height="10" aria-label="Combined image output"></canvas>
+    </div>
+    <div class="hint">Tip: Higher-resolution sources produce better results. The canvas resizes to the exact output size.</div>
+  </main>
+
+  <!-- Camera Scan Modal -->
+  <div id="scanModal" role="dialog" aria-modal="true" aria-labelledby="scanTitle" class="hidden" style="position:fixed; inset:0; display:none; align-items:center; justify-content:center; background: rgba(15, 23, 42, 0.6); z-index: 50;">
+    <div style="background:#fff; width:min(720px, 94vw); border-radius:12px; overflow:hidden; border:1px solid #e5e7eb; box-shadow: 0 10px 30px rgba(2, 6, 23, 0.3);">
+      <div style="padding:10px 14px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #e5e7eb;">
+        <h2 id="scanTitle" style="margin:0; font-size:1rem;">Scan from camera</h2>
+        <button id="scanClose" class="secondary" style="padding:6px 10px;">Close</button>
+      </div>
+      <div style="padding:10px;">
+        <div style="position:relative; width:100%; aspect-ratio: 4 / 3; background:#000; border-radius:10px; overflow:hidden;">
+          <video id="scanVideo" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover; display:block;"></video>
+          <div id="scanWarn" style="position:absolute; left:0; right:0; bottom:0; background: rgba(0,0,0,0.5); color:#fff; font-size:0.85rem; padding:6px 8px; display:none;">Camera needs HTTPS or localhost to work in most browsers.</div>
+        </div>
+        <div style="display:flex; gap:8px; justify-content:center; align-items:center; margin-top:10px; flex-wrap:wrap;">
+          <button id="scanStart" class="secondary">Start camera</button>
+          <button id="scanFlip" class="secondary" disabled>Switch camera</button>
+          <button id="scanCapture" disabled>Capture</button>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center; justify-content:center; margin-top:8px; flex-wrap:wrap;">
+          <label style="display:flex; align-items:center; gap:8px;">
+            <input type="checkbox" id="scanDocMode" checked />
+            <span>Auto-detect document edges</span>
+          </label>
+          <span id="cvStatus" style="color:#6b7280; font-size:0.85rem;">Loading scanner…</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const file1 = document.getElementById('file1');
+      const file2 = document.getElementById('file2');
+      const combineBtn = document.getElementById('combineBtn');
+      const downloadBtn = document.getElementById('downloadBtn');
+  const fitA4El = document.getElementById('fitA4');
+  const dpiSelect = document.getElementById('dpiSelect');
+  const a4PositionControls = document.getElementById('a4PositionControls');
+  const a4PosX = document.getElementById('a4PosX');
+  const a4PosY = document.getElementById('a4PosY');
+  const a4PosXVal = document.getElementById('a4PosXVal');
+  const a4PosYVal = document.getElementById('a4PosYVal');
+      const statusEl = document.getElementById('status');
+      const canvas = document.getElementById('resultCanvas');
+      const ctx = canvas.getContext('2d');
+  const preview1 = document.getElementById('preview1'); // canvas
+  const preview2 = document.getElementById('preview2'); // canvas
+  const rotL1 = document.getElementById('rotL1');
+  const rotR1 = document.getElementById('rotR1');
+  const rotL2 = document.getElementById('rotL2');
+  const rotR2 = document.getElementById('rotR2');
+  const rotLabel1 = document.getElementById('rotLabel1');
+  const rotLabel2 = document.getElementById('rotLabel2');
+  const clearCrop1 = document.getElementById('clearCrop1');
+  const clearCrop2 = document.getElementById('clearCrop2');
+  const scan1Btn = document.getElementById('scan1');
+  const scan2Btn = document.getElementById('scan2');
+  const scanModal = document.getElementById('scanModal');
+  const scanVideo = document.getElementById('scanVideo');
+  const scanClose = document.getElementById('scanClose');
+  const scanStart = document.getElementById('scanStart');
+  const scanFlip = document.getElementById('scanFlip');
+  const scanCapture = document.getElementById('scanCapture');
+  const scanWarn = document.getElementById('scanWarn');
+  const scanDocMode = document.getElementById('scanDocMode');
+  const cvStatus = document.getElementById('cvStatus');
+
+  // Track object URLs to revoke and avoid leaks
+  const previewUrls = { 1: null, 2: null };
+  const rotation = { 1: 0, 2: 0 }; // degrees: 0, 90, 180, 270
+  const images = { 1: null, 2: null }; // HTMLImageElement
+  const cropRect = { 1: null, 2: null }; // {x, y, w, h} in oriented coords
+  const previewState = { 1: null, 2: null }; // {scale, offsetX, offsetY, orientedW, orientedH}
+  let scanIndex = null; // 1 or 2 when scanning
+  let mediaStream = null;
+  let facingMode = 'environment';
+
+      // Improve scaling quality
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
+      function setStatus(msg) {
+        statusEl.textContent = msg || '';
+      }
+
+      function resetOutput() {
+        // Clear canvas and disable download until new output is generated
+        canvas.width = 10; canvas.height = 10;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        downloadBtn.disabled = true;
+      }
+
+      function isImage(file) {
+        return file && file.type && file.type.startsWith('image/');
+      }
+
+      function loadImage(file) {
+        return new Promise((resolve, reject) => {
+          const url = URL.createObjectURL(file);
+          const img = new Image();
+          img.onload = () => {
+            URL.revokeObjectURL(url);
+            resolve(img);
+          };
+          img.onerror = (e) => {
+            URL.revokeObjectURL(url);
+            reject(new Error('Failed to load image.'));
+          };
+          img.src = url;
+        });
+      }
+
+      function setPreview(canvasEl, file, index) {
+        // Revoke previous object URL if any
+        if (previewUrls[index]) {
+          try { URL.revokeObjectURL(previewUrls[index]); } catch (_) {}
+          previewUrls[index] = null;
+        }
+        if (file && isImage(file)) {
+          const url = URL.createObjectURL(file);
+          previewUrls[index] = url;
+          const img = new Image();
+          img.onload = () => {
+            images[index] = img;
+            drawPreview(index);
+          };
+          img.onerror = () => {
+            images[index] = null;
+            drawPreview(index);
+          };
+          img.src = url;
+        } else {
+          images[index] = null;
+          drawPreview(index);
+        }
+        // Reset rotation when a new file is selected or cleared
+        rotation[index] = 0;
+        cropRect[index] = null;
+        updateRotationUI(index);
+      }
+
+      function updateRotationUI(index) {
+        const deg = rotation[index] % 360;
+        const labelEl = index === 1 ? rotLabel1 : rotLabel2;
+        labelEl.textContent = `${((deg + 360) % 360)}°`;
+        const hasFile = (index === 1 ? file1.files[0] : file2.files[0]) && isImage((index === 1 ? file1.files[0] : file2.files[0]));
+        const hasImage = !!images[index];
+        // Enable/disable rotate buttons based on presence of a valid file
+        if (index === 1) {
+          rotL1.disabled = !(hasFile || hasImage);
+          rotR1.disabled = !(hasFile || hasImage);
+          clearCrop1.disabled = !(hasFile || hasImage);
+        } else {
+          rotL2.disabled = !(hasFile || hasImage);
+          rotR2.disabled = !(hasFile || hasImage);
+          clearCrop2.disabled = !(hasFile || hasImage);
+        }
+        // Redraw preview to reflect rotation change
+        drawPreview(index);
+      }
+
+      function rotateIndex(index, delta) {
+        rotation[index] = (rotation[index] + delta) % 360;
+        // Reset crop when rotating to avoid confusion
+        cropRect[index] = null;
+        updateRotationUI(index);
+      }
+
+      async function combine() {
+        try {
+          const f1 = file1.files[0];
+          const f2 = file2.files[0];
+
+          if ((!f1 && !images[1]) || (!f2 && !images[2])) {
+            setStatus('Please select or scan two images.');
+            return;
+          }
+
+          combineBtn.disabled = true;
+          downloadBtn.disabled = true;
+          setStatus('Loading images…');
+
+          const p1 = f1 ? loadImage(f1) : Promise.resolve(images[1]);
+          const p2 = f2 ? loadImage(f2) : Promise.resolve(images[2]);
+          const [img1, img2] = await Promise.all([p1, p2]);
+
+          const w1 = img1.naturalWidth || img1.width;
+          const h1 = img1.naturalHeight || img1.height;
+          const w2 = img2.naturalWidth || img2.width;
+          const h2 = img2.naturalHeight || img2.height;
+
+          if (!w1 || !h1 || !w2 || !h2) {
+            throw new Error('Invalid image dimensions.');
+          }
+
+          // Consider rotation for oriented widths/heights and crops
+          const r1 = ((rotation[1] % 360) + 360) % 360;
+          const r2 = ((rotation[2] % 360) + 360) % 360;
+          const orientedW1 = (r1 % 180 === 0) ? w1 : h1;
+          const orientedH1 = (r1 % 180 === 0) ? h1 : w1;
+          const orientedW2 = (r2 % 180 === 0) ? w2 : h2;
+          const orientedH2 = (r2 % 180 === 0) ? h2 : w2;
+
+          // Effective widths after crop (if any)
+          const crop1 = cropRect[1] || { x: 0, y: 0, w: orientedW1, h: orientedH1 };
+          const crop2 = cropRect[2] || { x: 0, y: 0, w: orientedW2, h: orientedH2 };
+
+          // Output options (A4 fit)
+          const fitA4 = !!fitA4El.checked;
+          const dpi = parseInt(dpiSelect.value || '300', 10) || 300;
+          const mmToPx = (mm) => Math.round((mm / 25.4) * dpi);
+          const a4W = mmToPx(210);
+          const a4H = mmToPx(297);
+          const marginPx = mmToPx(10);
+          const maxDrawW = fitA4 ? Math.max(1, a4W - marginPx * 2) : Infinity;
+          const maxDrawH = fitA4 ? Math.max(1, a4H - marginPx * 2) : Infinity;
+
+          // Target width for offscreen stacking: avoid upscaling and cap to A4 draw width if enabled
+          const targetWidth = Math.min(crop1.w, crop2.w, isFinite(maxDrawW) ? maxDrawW : Number.MAX_SAFE_INTEGER);
+
+          // Create offscreen canvases with rotation, crop, and scaling applied
+          const off1 = createCroppedScaledCanvas(img1, w1, h1, r1, targetWidth, crop1);
+          const off2 = createCroppedScaledCanvas(img2, w2, h2, r2, targetWidth, crop2);
+          const stackedHeight = off1.height + off2.height;
+
+          setStatus('Combining…');
+
+          if (fitA4) {
+            // Compose stacked offscreen first
+            const stacked = document.createElement('canvas');
+            stacked.width = targetWidth;
+            stacked.height = stackedHeight;
+            const sctx = stacked.getContext('2d');
+            sctx.imageSmoothingEnabled = true;
+            sctx.imageSmoothingQuality = 'high';
+            sctx.fillStyle = '#ffffff';
+            sctx.fillRect(0, 0, stacked.width, stacked.height);
+            sctx.drawImage(off1, 0, 0);
+            sctx.drawImage(off2, 0, off1.height);
+
+            // Fit stacked into A4 area with margins (contain)
+            const scale = Math.min(maxDrawW / stacked.width, maxDrawH / stacked.height, 1);
+            const drawW = Math.round(stacked.width * scale);
+            const drawH = Math.round(stacked.height * scale);
+            // Positioning based on sliders (-100..100)
+            const posX = Math.max(-100, Math.min(100, parseInt(a4PosX.value || '0', 10)));
+            const posY = Math.max(-100, Math.min(100, parseInt(a4PosY.value || '0', 10)));
+            const tX = (posX + 100) / 200; // 0..1
+            const tY = (posY + 100) / 200; // 0..1
+            const offsetX = marginPx + Math.floor((maxDrawW - drawW) * tX);
+            const offsetY = marginPx + Math.floor((maxDrawH - drawH) * tY);
+
+            // Final canvas is exact A4
+            canvas.width = a4W;
+            canvas.height = a4H;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(stacked, 0, 0, stacked.width, stacked.height, offsetX, offsetY, drawW, drawH);
+
+            setStatus(`Done. Output: A4 @ ${dpi} DPI (${a4W} × ${a4H}px)`);
+          } else {
+            // Original behavior: exact output size (no A4 fit)
+            canvas.width = targetWidth;
+            canvas.height = stackedHeight;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(off1, 0, 0);
+            ctx.drawImage(off2, 0, off1.height);
+            setStatus(`Done. Output size: ${targetWidth} × ${stackedHeight}px`);
+          }
+          downloadBtn.disabled = false;
+        } catch (err) {
+          console.error(err);
+          setStatus(err && err.message ? err.message : 'Something went wrong.');
+        } finally {
+          combineBtn.disabled = false;
+        }
+      }
+
+      function createCroppedScaledCanvas(img, w, h, deg, targetWidth, crop) {
+        // Create oriented (rotated) canvas at 1:1 scale
+        const orientedW = (deg % 180 === 0) ? w : h;
+        const orientedH = (deg % 180 === 0) ? h : w;
+        const oc = document.createElement('canvas');
+        oc.width = orientedW; oc.height = orientedH;
+        const octx = oc.getContext('2d');
+        octx.imageSmoothingEnabled = true;
+        octx.imageSmoothingQuality = 'high';
+        octx.fillStyle = '#ffffff';
+        octx.fillRect(0, 0, oc.width, oc.height);
+        octx.save();
+        octx.translate(oc.width / 2, oc.height / 2);
+        octx.rotate((deg * Math.PI) / 180);
+        octx.drawImage(img, -w / 2, -h / 2, w, h);
+        octx.restore();
+
+        // Crop rect in oriented coords
+        const sx = Math.max(0, Math.floor(crop.x));
+        const sy = Math.max(0, Math.floor(crop.y));
+        const sw = Math.max(1, Math.min(Math.floor(crop.w), orientedW - sx));
+        const sh = Math.max(1, Math.min(Math.floor(crop.h), orientedH - sy));
+
+        // Scale to targetWidth
+        const scale = targetWidth / sw;
+        const outW = Math.round(targetWidth);
+        const outH = Math.max(1, Math.round(sh * scale));
+        const out = document.createElement('canvas');
+        out.width = outW; out.height = outH;
+        const outCtx = out.getContext('2d');
+        outCtx.imageSmoothingEnabled = true;
+        outCtx.imageSmoothingQuality = 'high';
+        outCtx.fillStyle = '#ffffff';
+        outCtx.fillRect(0, 0, outW, outH);
+        outCtx.drawImage(oc, sx, sy, sw, sh, 0, 0, outW, outH);
+        return out;
+      }
+
+      function drawPreview(index) {
+        const canvas = index === 1 ? preview1 : preview2;
+        const ctx = canvas.getContext('2d');
+        const img = images[index];
+        const deg = ((rotation[index] % 360) + 360) % 360;
+
+        const box = canvas.parentElement; // .preview-box
+        const cssW = Math.max(50, Math.floor(box.clientWidth));
+        const cssH = Math.max(50, Math.floor(box.clientHeight));
+        canvas.width = cssW; // keep 1:1 for simpler hit tests
+        canvas.height = cssH;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        if (!img) {
+          // Draw placeholder
+          ctx.fillStyle = '#e5e7eb';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.fillStyle = '#9ca3af';
+          ctx.font = '12px system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('No image', canvas.width / 2, canvas.height / 2);
+          previewState[index] = null;
+          return;
+        }
+
+        // Build oriented offscreen (no scale) for easy mapping
+        const w = img.naturalWidth || img.width;
+        const h = img.naturalHeight || img.height;
+        const orientedW = (deg % 180 === 0) ? w : h;
+        const orientedH = (deg % 180 === 0) ? h : w;
+        const orientedCanvas = document.createElement('canvas');
+        orientedCanvas.width = orientedW; orientedCanvas.height = orientedH;
+        const octx = orientedCanvas.getContext('2d');
+        octx.fillStyle = '#ffffff';
+        octx.fillRect(0, 0, orientedW, orientedH);
+        octx.save();
+        octx.translate(orientedW / 2, orientedH / 2);
+        octx.rotate((deg * Math.PI) / 180);
+        octx.drawImage(img, -w / 2, -h / 2, w, h);
+        octx.restore();
+
+        // Fit oriented image into preview canvas (contain)
+        const scale = Math.min(canvas.width / orientedW, canvas.height / orientedH);
+        const drawW = orientedW * scale;
+        const drawH = orientedH * scale;
+        const offsetX = Math.round((canvas.width - drawW) / 2);
+        const offsetY = Math.round((canvas.height - drawH) / 2);
+        ctx.drawImage(orientedCanvas, 0, 0, orientedW, orientedH, offsetX, offsetY, drawW, drawH);
+
+        previewState[index] = { scale, offsetX, offsetY, orientedW, orientedH };
+
+        // Draw crop overlay
+        const cr = cropRect[index];
+        if (cr && cr.w > 0 && cr.h > 0) {
+          const x = offsetX + cr.x * scale;
+          const y = offsetY + cr.y * scale;
+          const wpx = cr.w * scale;
+          const hpx = cr.h * scale;
+          // Dim outside area
+          ctx.save();
+          ctx.fillStyle = 'rgba(2, 6, 23, 0.35)';
+          ctx.fillRect(0, 0, canvas.width, y);
+          ctx.fillRect(0, y + hpx, canvas.width, canvas.height - (y + hpx));
+          ctx.fillRect(0, y, x, hpx);
+          ctx.fillRect(x + wpx, y, canvas.width - (x + wpx), hpx);
+          ctx.restore();
+          // Border
+          ctx.save();
+          ctx.strokeStyle = '#2563eb';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x + 0.5, y + 0.5, wpx - 1, hpx - 1);
+          ctx.restore();
+        }
+      }
+
+      function attachCropHandlers(index) {
+        const canvas = index === 1 ? preview1 : preview2;
+        let dragging = false;
+        let start = null;
+
+        const toOriented = (mx, my) => {
+          const st = previewState[index];
+          if (!st) return null;
+          const x = (mx - st.offsetX) / st.scale;
+          const y = (my - st.offsetY) / st.scale;
+          // Clamp
+          const cx = Math.max(0, Math.min(st.orientedW, x));
+          const cy = Math.max(0, Math.min(st.orientedH, y));
+          return { x: cx, y: cy };
+        };
+
+        const onPointerDown = (e) => {
+          if (!images[index]) return;
+          canvas.setPointerCapture?.(e.pointerId || 0);
+          const rect = canvas.getBoundingClientRect();
+          const mx = e.clientX - rect.left;
+          const my = e.clientY - rect.top;
+          const p = toOriented(mx, my);
+          if (!p) return;
+          dragging = true;
+          start = p;
+          cropRect[index] = { x: p.x, y: p.y, w: 0, h: 0 };
+          drawPreview(index);
+        };
+        const onPointerMove = (e) => {
+          if (!dragging) return;
+          const rect = canvas.getBoundingClientRect();
+          const mx = e.clientX - rect.left;
+          const my = e.clientY - rect.top;
+          const p = toOriented(mx, my);
+          if (!p) return;
+          const x = Math.min(start.x, p.x);
+          const y = Math.min(start.y, p.y);
+          const w = Math.abs(start.x - p.x);
+          const h = Math.abs(start.y - p.y);
+          cropRect[index] = { x, y, w, h };
+          drawPreview(index);
+        };
+        const onPointerUp = (e) => {
+          if (!dragging) return;
+          dragging = false;
+          // If tiny selection, treat as no crop
+          const cr = cropRect[index];
+          if (!cr || cr.w < 2 || cr.h < 2) {
+            cropRect[index] = null;
+          }
+          drawPreview(index);
+        };
+
+        canvas.addEventListener('pointerdown', onPointerDown);
+        canvas.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+        canvas.addEventListener('pointercancel', onPointerUp);
+      }
+
+      function downloadJPEG() {
+        // Use toBlob for better memory characteristics than data URLs
+        setStatus('Preparing download…');
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            setStatus('Failed to generate JPEG.');
+            return;
+          }
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `combined-${Date.now()}.jpg`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 2000);
+          setStatus('');
+        }, 'image/jpeg', 0.92);
+      }
+
+      // Wire up UI
+  combineBtn.addEventListener('click', combine);
+      downloadBtn.addEventListener('click', downloadJPEG);
+  file1.addEventListener('change', () => { resetOutput(); setPreview(preview1, file1.files[0], 1); });
+  file2.addEventListener('change', () => { resetOutput(); setPreview(preview2, file2.files[0], 2); });
+  rotL1.addEventListener('click', () => rotateIndex(1, -90));
+  rotR1.addEventListener('click', () => rotateIndex(1, 90));
+  rotL2.addEventListener('click', () => rotateIndex(2, -90));
+  rotR2.addEventListener('click', () => rotateIndex(2, 90));
+  clearCrop1.addEventListener('click', () => { cropRect[1] = null; drawPreview(1); });
+  clearCrop2.addEventListener('click', () => { cropRect[2] = null; drawPreview(2); });
+
+      // Cleanup on unload
+      window.addEventListener('beforeunload', () => {
+        if (previewUrls[1]) { try { URL.revokeObjectURL(previewUrls[1]); } catch (_) {} }
+        if (previewUrls[2]) { try { URL.revokeObjectURL(previewUrls[2]); } catch (_) {} }
+      });
+
+      // Initial state
+  resetOutput();
+  setPreview(preview1, null, 1);
+  setPreview(preview2, null, 2);
+  // Initially disable rotation buttons
+  updateRotationUI(1);
+  updateRotationUI(2);
+  setStatus('Select two images to begin.');
+
+  // Enable cropping interactions
+  attachCropHandlers(1);
+  attachCropHandlers(2);
+
+      // Redraw previews on resize for responsiveness
+      let resizeTimer = null;
+      window.addEventListener('resize', () => {
+        if (resizeTimer) clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+          drawPreview(1);
+          drawPreview(2);
+        }, 120);
+      });
+
+      // A4 controls: visibility and value display
+      function updateA4ControlsVisibility() {
+        a4PositionControls.style.display = fitA4El.checked ? 'flex' : 'none';
+      }
+      updateA4ControlsVisibility();
+      fitA4El.addEventListener('change', updateA4ControlsVisibility);
+      a4PosX.addEventListener('input', () => { a4PosXVal.textContent = a4PosX.value; });
+      a4PosY.addEventListener('input', () => { a4PosYVal.textContent = a4PosY.value; });
+      a4PosXVal.textContent = a4PosX.value;
+      a4PosYVal.textContent = a4PosY.value;
+
+      // ------- Camera Scan Logic -------
+      function showScanModal(index) {
+        scanIndex = index;
+        scanModal.style.display = 'flex';
+        scanModal.classList.remove('hidden');
+        scanWarn.style.display = (location.protocol !== 'https:' && location.hostname !== 'localhost') ? 'block' : 'none';
+        // Try auto-starting camera (within user gesture)
+        startCamera();
+      }
+
+      async function startCamera() {
+        stopCamera();
+        try {
+          const constraints = { video: { facingMode }, audio: false };
+          mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+          scanVideo.srcObject = mediaStream;
+          await scanVideo.play();
+          scanFlip.disabled = false;
+          scanCapture.disabled = false;
+        } catch (e) {
+          console.error(e);
+          setStatus('Cannot access camera.');
+          scanFlip.disabled = true;
+          scanCapture.disabled = true;
+        }
+      }
+
+      function stopCamera() {
+        if (mediaStream) {
+          mediaStream.getTracks().forEach(t => t.stop());
+          mediaStream = null;
+        }
+        scanVideo.srcObject = null;
+      }
+
+      async function flipCamera() {
+        facingMode = (facingMode === 'environment') ? 'user' : 'environment';
+        await startCamera();
+      }
+
+      function dataTransferWithFile(file) {
+        try {
+          const dt = new DataTransfer();
+          dt.items.add(file);
+          return dt.files;
+        } catch (_) {
+          return null;
+        }
+      }
+
+  async function capturePhoto() {
+        if (!scanIndex) return;
+        if (!scanVideo.videoWidth || !scanVideo.videoHeight) return;
+        const vW = scanVideo.videoWidth;
+        const vH = scanVideo.videoHeight;
+        const maxW = 2000; // limit capture width for reasonable file size
+        const scale = Math.min(1, maxW / vW);
+        const outW = Math.round(vW * scale);
+        const outH = Math.round(vH * scale);
+        const cap = document.createElement('canvas');
+        cap.width = outW; cap.height = outH;
+        const cctx = cap.getContext('2d');
+        cctx.imageSmoothingEnabled = true;
+        cctx.imageSmoothingQuality = 'high';
+        cctx.drawImage(scanVideo, 0, 0, outW, outH);
+        // If doc mode is enabled and OpenCV is ready, attempt edge detect + warp
+        let finalCanvas = cap;
+        if (scanDocMode.checked && window.cvReady && window.cv) {
+          try {
+            const warped = warpDocumentFromCanvas(cap);
+            if (warped) finalCanvas = warped;
+          } catch (e) { console.warn('Doc warp failed:', e); }
+        }
+        finalCanvas.toBlob(async (blob) => {
+          if (!blob) return;
+          const file = new File([blob], `scan-${Date.now()}.jpg`, { type: 'image/jpeg' });
+          const files = dataTransferWithFile(file);
+          if (scanIndex === 1) {
+            if (files) file1.files = files;
+            setPreview(preview1, file, 1);
+          } else {
+            if (files) file2.files = files;
+            setPreview(preview2, file, 2);
+          }
+          setStatus('Captured from camera.');
+          // Close modal and stop camera after capture
+          closeScanModal();
+        }, 'image/jpeg', 0.92);
+      }
+
+      function warpDocumentFromCanvas(sourceCanvas) {
+        try {
+          if (!window.cvReady || !window.cv) return null;
+          const cv = window.cv;
+          let src = cv.imread(sourceCanvas);
+          let gray = new cv.Mat();
+          let blur = new cv.Mat();
+          let edges = new cv.Mat();
+          let contours = new cv.MatVector();
+          let hierarchy = new cv.Mat();
+
+          cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+          // Enhance edges with adaptive threshold then Canny
+          cv.GaussianBlur(gray, blur, new cv.Size(5,5), 0, 0, cv.BORDER_DEFAULT);
+          let thresh = new cv.Mat();
+          cv.adaptiveThreshold(blur, thresh, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 15, 10);
+          cv.Canny(thresh, edges, 60, 180);
+
+          cv.findContours(edges, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+          // Find the largest 4-point contour
+          let best = null;
+          let bestArea = 0;
+          for (let i = 0; i < contours.size(); i++) {
+            const cnt = contours.get(i);
+            const area = cv.contourArea(cnt, false);
+            if (area < (src.rows * src.cols) * 0.02) { // skip tiny
+              cnt.delete();
+              continue;
+            }
+            const peri = cv.arcLength(cnt, true);
+            const approx = new cv.Mat();
+            cv.approxPolyDP(cnt, approx, 0.02 * peri, true);
+            if (approx.rows === 4 && area > bestArea) {
+              bestArea = area;
+              if (best) best.delete();
+              best = approx; // keep approx; discard cnt
+            } else {
+              approx.delete();
+            }
+            cnt.delete();
+          }
+
+          let outCanvas = null;
+          if (best && best.rows === 4) {
+            // Extract points
+            const pts = [];
+            const data = best.data32S;
+            for (let i = 0; i < data.length; i += 2) pts.push({ x: data[i], y: data[i+1] });
+            // Order corners: tl, tr, br, bl
+            const sumSort = [...pts].sort((a,b)=> (a.x+a.y)-(b.x+b.y));
+            const diffSort = [...pts].sort((a,b)=> (a.x-a.y)-(b.x-b.y));
+            const tl = sumSort[0];
+            const br = sumSort[sumSort.length-1];
+            const tr = diffSort[0];
+            const bl = diffSort[diffSort.length-1];
+
+            const dstW = Math.max(
+              Math.hypot(tr.x - tl.x, tr.y - tl.y),
+              Math.hypot(br.x - bl.x, br.y - bl.y)
+            );
+            const dstH = Math.max(
+              Math.hypot(bl.x - tl.x, bl.y - tl.y),
+              Math.hypot(br.x - tr.x, br.y - tr.y)
+            );
+            // Clamp output size
+            const maxDim = 2200;
+            let oW = Math.round(dstW);
+            let oH = Math.round(dstH);
+            const s = Math.min(1, maxDim / Math.max(oW, oH));
+            oW = Math.max(1, Math.round(oW * s));
+            oH = Math.max(1, Math.round(oH * s));
+
+            const srcPts = cv.matFromArray(4, 1, cv.CV_32FC2, [tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y]);
+            const dstPts = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, oW-1, 0, oW-1, oH-1, 0, oH-1]);
+            const M = cv.getPerspectiveTransform(srcPts, dstPts);
+            let warped = new cv.Mat();
+            cv.warpPerspective(src, warped, M, new cv.Size(oW, oH), cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
+
+            // Convert to canvas
+            outCanvas = document.createElement('canvas');
+            outCanvas.width = oW; outCanvas.height = oH;
+            cv.imshow(outCanvas, warped);
+
+            // Cleanup
+            srcPts.delete(); dstPts.delete(); M.delete(); warped.delete();
+          } else {
+            // Fallback: use largest contour bounding rect if available
+            let maxRect = null; let maxA = 0;
+            for (let i = 0; i < contours.size(); i++) {
+              const cnt = contours.get(i);
+              const r = cv.boundingRect(cnt);
+              const a = r.width * r.height;
+              if (a > maxA) { maxA = a; maxRect = r; }
+              cnt.delete();
+            }
+            if (maxRect && maxA > (src.rows * src.cols) * 0.05) {
+              const oc = document.createElement('canvas');
+              oc.width = maxRect.width; oc.height = maxRect.height;
+              const octx2 = oc.getContext('2d');
+              octx2.drawImage(sourceCanvas, maxRect.x, maxRect.y, maxRect.width, maxRect.height, 0, 0, oc.width, oc.height);
+              outCanvas = oc;
+            }
+          }
+
+          // Cleanup mats
+          src.delete(); gray.delete(); blur.delete(); edges.delete(); contours.delete(); hierarchy.delete();
+          if (typeof thresh !== 'undefined') thresh.delete();
+          if (best) best.delete();
+          return outCanvas;
+        } catch (err) {
+          console.warn('warpDocumentFromCanvas error', err);
+          return null;
+        }
+      }
+
+      function closeScanModal() {
+        stopCamera();
+        scanModal.style.display = 'none';
+        scanModal.classList.add('hidden');
+        scanIndex = null;
+      }
+
+      // Bind scan events
+      scan1Btn.addEventListener('click', () => showScanModal(1));
+      scan2Btn.addEventListener('click', () => showScanModal(2));
+      scanClose.addEventListener('click', closeScanModal);
+      scanStart.addEventListener('click', startCamera);
+      scanFlip.addEventListener('click', flipCamera);
+      scanCapture.addEventListener('click', capturePhoto);
+
+      // Show OpenCV load status in modal
+      const cvStatusTimer = setInterval(() => {
+        if (window.cvReady) {
+          cvStatus.textContent = 'Scanner ready';
+          clearInterval(cvStatusTimer);
+        } else {
+          cvStatus.textContent = 'Loading scanner…';
+        }
+      }, 400);
+    })();
+  </script>
+</body>
+</html>
